@@ -141,3 +141,15 @@ MESSAGE_TAGS = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ---------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------
+# Where Django sends people who are not logged in (name of a URL in urls.py)
+LOGIN_URL = 'login'
+
+# Where to go after a successful login
+LOGIN_REDIRECT_URL = 'dashboard'
+
+# Where to go after logout
+LOGOUT_REDIRECT_URL = 'login'

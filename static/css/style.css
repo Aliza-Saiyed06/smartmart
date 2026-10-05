@@ -82,3 +82,24 @@ body {
     letter-spacing: 0.03em;
     color: var(--sm-text-muted);
 }
+
+/* ---------- Login page ---------- */
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #e8f5ee 0%, #e7f0fd 100%);
+}
+
+.login-logo {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    background-color: var(--sm-green);
+    color: #ffffff;
+    font-size: 1.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

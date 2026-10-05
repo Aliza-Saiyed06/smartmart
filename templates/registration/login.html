@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login | SmartMart</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'css/style.css' %}" rel="stylesheet">
+</head>
+<body class="login-page">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+
+                <div class="text-center mb-4">
+                    <div class="login-logo">
+                        <i class="bi bi-basket2-fill"></i>
+                    </div>
+                    <h1 class="h3 fw-bold text-success mb-0">SmartMart</h1>
+                    <p class="text-muted">Supermarket Management &amp; Sales Analytics</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-body p-4">
+                        <h2 class="h5 mb-3">Sign in</h2>
+
+                        <!-- Error message (wrong username/password) -->
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger py-2" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                {{ form.non_field_errors.0 }}
+                            </div>
+                        {% endif %}
+
+                        <form method="post" id="login-form" novalidate>
+                            {% csrf_token %}
+                            <!-- Remembers the page the user originally wanted -->
+                            <input type="hidden" name="next" value="{{ next }}">
+
+                            <div class="mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                                {{ form.username }}
+                                <div class="invalid-feedback">Please enter your username.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
+                                <div class="input-group">
+                                    {{ form.password }}
+                                    <button class="btn btn-outline-secondary" type="button" id="toggle-password"
+                                            aria-label="Show or hide password">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <div class="invalid-feedback">Please enter your password.</div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <p class="text-center text-muted small mt-3">
+                    College project: Open Source Technologies
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
+        $(document).ready(function () {
+
+            // jQuery feature 1: show / hide the password
+            $('#toggle-password').on('click', function () {
+                var passwordBox = $('#id_password');
+                var icon = $(this).find('i');
+
+                if (passwordBox.attr('type') === 'password') {
+                    passwordBox.attr('type', 'text');
+                    icon.removeClass('bi-eye').addClass('bi-eye-slash');
+                } else {
+                    passwordBox.attr('type', 'password');
+                    icon.removeClass('bi-eye-slash').addClass('bi-eye');
+                }
+            });
+
+            // jQuery feature 2: simple client-side check before the form is sent
+            $('#login-form').on('submit', function (event) {
+                var isValid = true;
+
+                $('#id_username, #id_password').each(function () {
+                    if ($.trim($(this).val()) === '') {
+                        $(this).addClass('is-invalid');
+                        isValid = false;
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+
+                if (!isValid) {
+                    event.preventDefault();   // stop the form from being sent
+                }
+            });
+        });
+    </script>
+</body>
+</html>

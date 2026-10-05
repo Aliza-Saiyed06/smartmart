@@ -5,10 +5,12 @@ A view receives a web request, does some work, and returns a web page.
 """
 
 import django
+from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.shortcuts import render
 
 
+@login_required   # not logged in? Django redirects to LOGIN_URL (/login/)
 def dashboard(request):
     """
     Temporary dashboard (Phase 3).
