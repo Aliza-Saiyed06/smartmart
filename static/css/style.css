@@ -1,0 +1,84 @@
+/* =========================================================
+   SmartMart custom styles
+   Bootstrap does most of the work. This file adds our theme.
+   ========================================================= */
+
+:root {
+    --sm-green: #198754;
+    --sm-green-light: #e8f5ee;
+    --sm-blue: #0d6efd;
+    --sm-bg: #f4f7f6;
+    --sm-text-muted: #6c757d;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--sm-bg);
+    color: #212529;
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+    height: 56px;
+}
+
+/* ---------- Layout ---------- */
+.app-wrapper {
+    min-height: calc(100vh - 56px);
+}
+
+/* min-width: 0 stops wide tables from stretching the page sideways */
+.content {
+    min-width: 0;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar .nav-link {
+    color: #495057;
+    font-weight: 500;
+    padding: 0.65rem 0.9rem;
+    margin-bottom: 0.25rem;
+    border-radius: 0.5rem;
+}
+
+.sidebar .nav-link i {
+    display: inline-block;
+    width: 1.5rem;
+}
+
+.sidebar .nav-link:hover {
+    background-color: var(--sm-green-light);
+    color: var(--sm-green);
+}
+
+.sidebar .nav-link.active {
+    background-color: var(--sm-green);
+    color: #ffffff;
+}
+
+/* On large screens, the sidebar is a fixed-width white column */
+@media (min-width: 992px) {
+    .offcanvas-lg.sidebar {
+        flex: 0 0 240px;
+        max-width: 240px;
+        background-color: #ffffff !important;
+        border-right-width: 1px !important;
+        border-right-style: solid !important;
+        border-right-color: #dee2e6 !important;
+    }
+}
+
+/* ---------- Cards ---------- */
+.card {
+    border: 0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ---------- Tables ---------- */
+.table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--sm-text-muted);
+}

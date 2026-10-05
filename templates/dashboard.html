@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h1 class="h3 fw-bold mb-1">SmartMart Dashboard</h1>
+    <p class="text-muted mb-0">Supermarket Management &amp; Sales Analytics System</p>
+</div>
+
+<div class="alert alert-success">
+    <i class="bi bi-check-circle-fill me-2"></i>
+    <strong>Phase 3 complete.</strong> Django is running. The real dashboard is built in Phase 12.
+</div>
+
+<h2 class="h5 mb-3">System check</h2>
+<div class="row g-3 mb-4">
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Django</div>
+                <div class="fs-5 fw-semibold">Version {{ django_version }}</div>
+                <span class="badge bg-success mt-2">Working</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">MySQL database</div>
+                {% if database_ok %}
+                    <div class="fs-5 fw-semibold">{{ database_name }}</div>
+                    <div class="small text-muted">MySQL {{ mysql_version }}</div>
+                    <span class="badge bg-success mt-2">Connected</span>
+                {% else %}
+                    <div class="fs-5 fw-semibold">{{ database_name }}</div>
+                    <span class="badge bg-danger mt-2">Not connected</span>
+                    <div class="small text-danger mt-2">Check the DB_ values in your .env file.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Bootstrap 5 (JavaScript)</div>
+                <div class="fs-5 fw-semibold">Components</div>
+                <span id="bootstrap-status" class="badge bg-secondary mt-2">Checking...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted small">jQuery</div>
+                <div class="fs-5 fw-semibold">DOM manipulation</div>
+                <span id="jquery-status" class="badge bg-secondary mt-2">Checking...</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<h2 class="h5 mb-3">Planned modules</h2>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Module</th>
+                    <th>Built in</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Products</td><td>Phase 6</td></tr>
+                <tr><td>Inventory</td><td>Phase 7</td></tr>
+                <tr><td>Billing</td><td>Phase 8</td></tr>
+                <tr><td>Customers and Suppliers</td><td>Phases 9 and 10</td></tr>
+                <tr><td>Sales</td><td>Phase 11</td></tr>
+                <tr><td>Analytics and Restock</td><td>Phases 13 and 14</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+    // jQuery test: $(document).ready runs when the page has finished loading.
+    $(document).ready(function () {
+        $('#jquery-status')
+            .removeClass('bg-secondary')
+            .addClass('bg-success')
+            .text('Working');
+
+        // Plain JavaScript test: 'bootstrap' exists only if Bootstrap's JS loaded.
+        if (typeof bootstrap !== 'undefined') {
+            var badge = document.getElementById('bootstrap-status');
+            badge.className = 'badge bg-success mt-2';
+            badge.textContent = 'Working';
+        }
+    });
+</script>
+{% endblock %}
