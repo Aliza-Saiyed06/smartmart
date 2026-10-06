@@ -1,0 +1,9 @@
+<!-- data-bs-toggle="modal" opens the restock modal (Bootstrap).
+     The data-* attributes are read by the script in inventory_list.html (jQuery). -->
+<button type="button" class="btn btn-sm btn-success restock-btn"
+        data-bs-toggle="modal" data-bs-target="#restockModal"
+        data-url="{% url 'inventory_restock' product.pk %}"
+        data-name="{{ product.name }}"
+        data-stock="{{ product.quantity }}">
+    <i class="bi bi-plus-circle me-1"></i> Restock
+</button>

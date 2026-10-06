@@ -103,3 +103,98 @@ body {
     align-items: center;
     justify-content: center;
 }
+
+/* ---------- Inventory ---------- */
+.status-card {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Billing ---------- */
+/* Scrollable product list with a header that stays visible */
+.product-picker {
+    max-height: 460px;
+    overflow-y: auto;
+}
+
+.product-picker thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: #f8f9fa;
+}
+
+/* Quantity box: [-] [ 2 ] [+] */
+.qty-group {
+    width: 118px;
+}
+
+.qty-input {
+    min-width: 0;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+.cart-total {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--sm-green);
+}
+
+/* On large screens the cart stays in view while the product list scrolls */
+@media (min-width: 992px) {
+    .cart-sticky {
+        position: sticky;
+        top: 72px;
+    }
+}
+
+/* ---------- Receipt ---------- */
+.receipt {
+    max-width: 380px;
+    margin: 0 auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+}
+
+.receipt hr {
+    border-top: 1px dashed #6c757d;
+    opacity: 1;
+}
+
+.receipt table {
+    width: 100%;
+}
+
+.receipt th,
+.receipt td {
+    padding: 0.15rem 0;
+    vertical-align: top;
+}
+
+/* Printing: show only the receipt */
+@media print {
+    .topbar,
+    .sidebar,
+    .no-print,
+    .alert {
+        display: none !important;
+    }
+
+    body {
+        background: #ffffff;
+    }
+
+    .content {
+        padding: 0 !important;
+    }
+
+    .receipt-card {
+        box-shadow: none !important;
+    }
+}

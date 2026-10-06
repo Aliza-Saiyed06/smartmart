@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static l10n %}
+
+{% block title %}Billing{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h1 class="h3 fw-bold mb-0">Billing</h1>
+    <p class="text-muted mb-0">Select products, then generate the bill. Stock is reduced automatically.</p>
+</div>
+
+<div class="row g-3">
+
+    <!-- ================= LEFT: product picker ================= -->
+    <div class="col-12 col-lg-7">
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-12 col-md-7">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="search" id="product-search" class="form-control live-search"
+                                   data-table="#billing-product-table" autocomplete="off" autofocus
+                                   placeholder="Search product...">
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-5">
+                        <select class="form-select live-filter" data-table="#billing-product-table"
+                                data-field="category" aria-label="Filter by category">
+                            <option value="">All categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-text">Tip: press <kbd>Enter</kbd> in the search box to add the first matching product.</div>
+            </div>
+
+            {% if products %}
+            <div class="table-responsive product-picker">
+                <table class="table table-hover align-middle mb-0" id="billing-product-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Product</th>
+                            <th class="text-end">Price</th>
+                            <th class="text-end">Stock</th>
+                            <th class="text-end">Add</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <!-- data-search and data-category are used by filters.js (jQuery);
+                             data-product-id/name/price/stock are read by billing.js.
+                             |unlocalize makes sure the price always has a '.' decimal point. -->
+                        <tr data-search="{{ product.name|lower }} {{ product.category.name|lower }}"
+                            data-category="{{ product.category_id }}"
+                            data-product-id="{{ product.id }}"
+                            data-name="{{ product.name }}"
+                            data-price="{{ product.price|unlocalize }}"
+                            data-stock="{{ product.quantity }}">
+                            <td>
+                                <div class="fw-semibold">{{ product.name }}</div>
+                                <div class="small text-muted">{{ product.category.name }}</div>
+                            </td>
+                            <td class="text-end">₹{{ product.price|floatformat:2 }}</td>
+                            <td class="text-end">
+                                <span class="badge {{ product.status_badge }}">
+                                    {% if product.is_out_of_stock %}Out of stock{% else %}{{ product.quantity }}{% endif %}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-success add-to-cart-btn"
+                                        {% if product.is_out_of_stock %}disabled{% endif %}>
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+
+                        <tr class="no-results-row" style="display: none;">
+                            <td colspan="4" class="text-center text-muted py-4">
+                                <i class="bi bi-search me-1"></i> No products match your search.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card-body text-center text-muted border-top py-5">
+                <i class="bi bi-box-seam fs-1"></i>
+                <p class="mt-2 mb-3">There are no products to sell yet.</p>
+                <a href="{% url 'product_create' %}" class="btn btn-success">Add a product</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ================= RIGHT: cart and payment ================= -->
+    <div class="col-12 col-lg-5">
+        <form method="post" id="billing-form" novalidate>
+            {% csrf_token %}
+            <!-- billing.js puts the cart (ids and quantities) here just before the form is sent -->
+            <input type="hidden" name="cart_data" id="cart-data">
+
+            <div class="card cart-sticky">
+                <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-cart3 me-1"></i> Current bill</span>
+                    <span class="badge bg-success" id="cart-count">0</span>
+                </div>
+
+                <!-- Messages from billing.js appear here -->
+                <div id="cart-message"></div>
+
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th class="text-end">Amount</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <!-- Rows are created by billing.js -->
+                        <tbody id="cart-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="card-body border-top">
+                    <div class="d-flex justify-content-between text-muted">
+                        <span>Total units</span>
+                        <span id="cart-units">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-bold">TOTAL</span>
+                        <span class="cart-total" id="cart-total">₹0.00</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="customer-select" class="form-label mb-1">Customer <span class="text-muted small">(optional)</span></label>
+                        <select name="customer" id="customer-select" class="form-select">
+                            <option value="">Walk-in customer</option>
+                            {% for customer in customers %}
+                                <option value="{{ customer.id }}"
+                                        {% if selected_customer == customer.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ customer.name }} ({{ customer.phone }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-label mb-1">Payment method</div>
+                        <div class="btn-group w-100" role="group" aria-label="Payment method">
+                            {% for value, label in payment_choices %}
+                                <input type="radio" class="btn-check" name="payment_method"
+                                       id="pay-{{ value }}" value="{{ value }}"
+                                       {% if value == selected_payment %}checked{% endif %}>
+                                <label class="btn btn-outline-success" for="pay-{{ value }}">{{ label }}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-lg w-100" id="generate-bill-btn">
+                        <i class="bi bi-receipt me-1"></i> Generate Bill
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cart restored after a failed bill (empty list on a normal visit) -->
+{{ saved_items|json_script:"saved-items" }}
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/filters.js' %}"></script>
+<script src="{% static 'js/billing.js' %}"></script>
+{% endblock %}

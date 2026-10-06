@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inventory{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h1 class="h3 fw-bold mb-0">Inventory</h1>
+    <p class="text-muted mb-0">Stock levels update automatically when a bill is generated.</p>
+</div>
+
+<!-- ===== Summary cards (click one to filter the table) ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 status-card border-start border-4 border-secondary" data-status="">
+            <div class="card-body">
+                <div class="text-muted small">All products</div>
+                <div class="fs-2 fw-bold">{{ summary.total }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 status-card border-start border-4 border-success" data-status="IN_STOCK">
+            <div class="card-body">
+                <div class="text-muted small">In stock</div>
+                <div class="fs-2 fw-bold text-success">{{ summary.in_stock }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 status-card border-start border-4 border-warning" data-status="LOW_STOCK">
+            <div class="card-body">
+                <div class="text-muted small">Low stock</div>
+                <div class="fs-2 fw-bold text-warning">{{ summary.low }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 status-card border-start border-4 border-danger" data-status="OUT_OF_STOCK">
+            <div class="card-body">
+                <div class="text-muted small">Out of stock</div>
+                <div class="fs-2 fw-bold text-danger">{{ summary.out }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Needs attention ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-warning-subtle fw-semibold">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> LOW STOCK PRODUCTS
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for product in low_stock_products %}
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="fw-semibold">{{ product.name }}</span>
+                        <div class="small text-muted">
+                            {{ product.quantity }} unit{{ product.quantity|pluralize }} left
+                            (minimum {{ product.minimum_stock }})
+                        </div>
+                    </div>
+                    {% include 'inventory/_restock_button.html' with product=product %}
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">
+                    <i class="bi bi-check-circle text-success me-1"></i> No low-stock products.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-danger-subtle fw-semibold">
+                <i class="bi bi-x-octagon-fill text-danger me-1"></i> OUT OF STOCK PRODUCTS
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for product in out_of_stock_products %}
+                <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                    <div>
+                        <span class="fw-semibold">{{ product.name }}</span>
+                        <div class="small text-muted">0 units (minimum {{ product.minimum_stock }})</div>
+                    </div>
+                    {% include 'inventory/_restock_button.html' with product=product %}
+                </li>
+                {% empty %}
+                <li class="list-group-item text-muted">
+                    <i class="bi bi-check-circle text-success me-1"></i> No out-of-stock products.
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Search + filter ===== -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-control live-search" data-table="#inventory-table"
+                           placeholder="Search by name, category or supplier...">
+                </div>
+            </div>
+            <div class="col-8 col-md-4">
+                <select id="inventory-status-filter" class="form-select live-filter"
+                        data-table="#inventory-table" data-field="status" aria-label="Filter by stock status">
+                    <option value="">All stock statuses</option>
+                    <option value="IN_STOCK">In Stock</option>
+                    <option value="LOW_STOCK">Low Stock</option>
+                    <option value="OUT_OF_STOCK">Out of Stock</option>
+                </select>
+            </div>
+            <div class="col-4 col-md-2 text-end text-muted small">
+                Showing <span class="filter-count" data-table="#inventory-table">{{ products|length }}</span>
+                of {{ products|length }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Stock table ===== -->
+{% if products %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="inventory-table">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Product</th>
+                    <th class="d-none d-md-table-cell">Category</th>
+                    <th class="text-end">Stock</th>
+                    <th class="text-end d-none d-md-table-cell">Min.</th>
+                    <th>Status</th>
+                    <th class="d-none d-lg-table-cell">Expiry</th>
+                    <th class="d-none d-xl-table-cell">Supplier</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="{% if product.is_out_of_stock %}table-danger{% elif product.is_low_stock %}table-warning{% endif %}"
+                    data-search="{{ product.name|lower }} {{ product.category.name|lower }} {{ product.supplier.name|lower }} {{ product.supplier.company|lower }}"
+                    data-status="{{ product.stock_status }}">
+                    <td>{{ product.id }}</td>
+                    <td class="fw-semibold">
+                        <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none text-dark">{{ product.name }}</a>
+                    </td>
+                    <td class="d-none d-md-table-cell">{{ product.category.name }}</td>
+                    <td class="text-end fw-semibold">{{ product.quantity }}</td>
+                    <td class="text-end d-none d-md-table-cell">{{ product.minimum_stock }}</td>
+                    <td><span class="badge {{ product.status_badge }}">{{ product.status_label }}</span></td>
+                    <td class="d-none d-lg-table-cell">
+                        {% if product.expiry_date %}
+                            {{ product.expiry_date|date:"d M Y" }}
+                            {% if product.expiry_date < today %}
+                                <span class="badge bg-danger">Expired</span>
+                            {% elif product.expiry_date <= expiry_soon %}
+                                <span class="badge bg-warning text-dark">Expiring soon</span>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="d-none d-xl-table-cell">{{ product.supplier.name }}</td>
+                    <td class="text-end">
+                        {% include 'inventory/_restock_button.html' with product=product %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tr class="no-results-row" style="display: none;">
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="bi bi-search me-1"></i> No products match your search.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-clipboard-check fs-1"></i>
+        <p class="mt-2 mb-3">There are no products in the inventory yet.</p>
+        <a href="{% url 'product_create' %}" class="btn btn-success">Add a product</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ===== Restock modal (Bootstrap component) ===== -->
+<div class="modal fade" id="restockModal" tabindex="-1" aria-labelledby="restockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <!-- action is filled in by jQuery when a Restock button is clicked -->
+            <form method="post" id="restock-form" action="" class="js-validate" novalidate>
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="restockModalLabel">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Restock product
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">Product: <strong id="restock-product-name"></strong></p>
+                    <p class="mb-3">Current stock: <strong id="restock-current-stock"></strong> units</p>
+
+                    <div class="mb-1">
+                        {% include 'includes/form_field.html' with field=restock_form.quantity %}
+                    </div>
+                    <div class="form-text text-success fw-semibold" id="restock-preview"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i> Add to stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/filters.js' %}"></script>
+<script src="{% static 'js/validation.js' %}"></script>
+<script>
+    $(document).ready(function () {
+
+        var currentStock = 0;
+
+        // 1. A Restock button was clicked: put that product's details into the modal.
+        //    (Bootstrap opens the modal itself because of data-bs-toggle="modal".)
+        $('.restock-btn').on('click', function () {
+            currentStock = parseInt($(this).attr('data-stock'), 10);
+
+            $('#restock-product-name').text($(this).attr('data-name'));
+            $('#restock-current-stock').text(currentStock);
+            $('#restock-form').attr('action', $(this).attr('data-url'));   // where the form will be sent
+
+            // Reset the input from any previous use
+            $('#id_quantity').val('').removeClass('is-invalid');
+            $('#restock-form .invalid-feedback').text('');
+            $('#restock-preview').text('');
+        });
+
+        // 2. Live preview: show what the stock will be after restocking
+        $('#id_quantity').on('input', function () {
+            var unitsToAdd = parseInt($(this).val(), 10);
+            if (isNaN(unitsToAdd) || unitsToAdd < 1) {
+                $('#restock-preview').text('');
+            } else {
+                $('#restock-preview').text('New stock will be ' + (currentStock + unitsToAdd) + ' units.');
+            }
+        });
+
+        // 3. Clicking a summary card sets the status dropdown, then triggers the
+        //    same 'change' event that filters.js listens to.
+        $('.status-card').on('click', function () {
+            $('#inventory-status-filter').val($(this).attr('data-status')).trigger('change');
+            $('html, body').animate({ scrollTop: $('#inventory-table').offset().top - 80 }, 300);
+        });
+    });
+
+    // 4. Put the cursor in the quantity box when the modal has finished opening
+    var restockModal = document.getElementById('restockModal');
+    restockModal.addEventListener('shown.bs.modal', function () {
+        document.getElementById('id_quantity').focus();
+    });
+</script>
+{% endblock %}

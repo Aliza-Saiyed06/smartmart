@@ -32,4 +32,12 @@ urlpatterns = [
     path('products/<int:pk>/', views.product_detail, name='product_detail'),
     path('products/<int:pk>/edit/', views.product_update, name='product_update'),
     path('products/<int:pk>/delete/', views.product_delete, name='product_delete'),
+
+    # Inventory (Phase 7)
+    path('inventory/', views.inventory_list, name='inventory_list'),
+    path('inventory/<int:pk>/restock/', views.inventory_restock, name='inventory_restock'),
+
+    # Billing (Phase 8)
+    path('billing/', views.billing_page, name='billing'),
+    path('billing/receipt/<int:pk>/', views.billing_receipt, name='billing_receipt'),
 ]

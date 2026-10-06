@@ -132,3 +132,32 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         if expiry_date and not self.instance.pk and expiry_date < date.today():
             raise forms.ValidationError('Expiry date cannot be in the past.')
         return expiry_date
+
+# ---------------------------------------------------------------
+# Restock form (Phase 7)
+# ---------------------------------------------------------------
+class RestockForm(BootstrapFormMixin, forms.Form):
+    """
+    One field: how many units arrived from the supplier.
+    This is a plain Form (not a ModelForm) because we do not create or edit
+    a whole product, we only add a number to its stock.
+    """
+
+    quantity = forms.IntegerField(
+        label='Quantity received',
+        min_value=1,
+        max_value=100000,
+        widget=forms.NumberInput(attrs={
+            'min': '1',
+            'max': '100000',
+            'step': '1',
+            'data-integer': 'true',
+            'placeholder': 'e.g. 50',
+        }),
+        error_messages={
+            'required': 'Please enter the quantity received.',
+            'invalid': 'Quantity must be a whole number.',
+            'min_value': 'Quantity must be at least 1.',
+            'max_value': 'Quantity cannot be more than 100000.',
+        },
+    )
