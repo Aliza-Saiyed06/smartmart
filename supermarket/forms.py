@@ -11,7 +11,7 @@ from datetime import date
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 
-from .models import Product
+from .models import Customer, Product
 
 
 # ---------------------------------------------------------------
@@ -161,3 +161,53 @@ class RestockForm(BootstrapFormMixin, forms.Form):
             'max_value': 'Quantity cannot be more than 100000.',
         },
     )
+
+    # ---------------------------------------------------------------
+# Customer form (Phase 9)
+# ---------------------------------------------------------------
+class CustomerForm(BootstrapFormMixin, forms.ModelForm):
+    """Used for both 'Add customer' and 'Edit customer'."""
+
+    class Meta:
+        model = Customer
+        fields = ['name', 'phone', 'email']
+        labels = {
+            'name': 'Customer name',
+            'phone': 'Phone number',
+            'email': 'Email',
+        }
+        help_texts = {
+            'phone': '10-digit mobile number starting with 6, 7, 8 or 9.',
+            'email': 'Optional.',
+        }
+        widgets = {
+            # pattern + data-pattern-message are read by static/js/validation.js
+            'phone': forms.TextInput(attrs={
+                'pattern': '[6-9][0-9]{9}',
+                'data-pattern-message': 'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.',
+                'maxlength': '10',
+                'inputmode': 'numeric',
+                'placeholder': 'e.g. 9876543210',
+            }),
+            'email': forms.EmailInput(attrs={'placeholder': 'name@example.com'}),
+        }
+        error_messages = {
+            # The database has unique=True on phone, so Django checks duplicates for us
+            'phone': {'unique': 'A customer with this phone number already exists.'},
+        }
+
+    # ----- Server-side validation -----
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        if len(name) < 2:
+            raise forms.ValidationError('Name must have at least 2 characters.')
+        return name
+
+    def clean_phone(self):
+        # Remove spaces and dashes the user may have typed: "98765 43210" -> "9876543210"
+        phone = self.cleaned_data['phone'].replace(' ', '').replace('-', '')
+        if not phone.isdigit() or len(phone) != 10 or phone[0] not in '6789':
+            raise forms.ValidationError(
+                'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.'
+            )
+        return phone

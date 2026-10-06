@@ -11,11 +11,11 @@ import django
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import DatabaseError, connection
-from django.db.models import ProtectedError, Sum
+from django.db.models import Count, ProtectedError, Sum
 from django.shortcuts import redirect, render
 
 from .billing_logic import BillingError, create_sale, parse_cart
-from .forms import ProductForm, RestockForm
+from .forms import CustomerForm, ProductForm, RestockForm
 from .inventory import low_stock_products, out_of_stock_products, stock_summary
 from .models import Category, Customer, Product, Sale
 
@@ -306,4 +306,113 @@ def billing_receipt(request, pk):
         'sale': sale,
         'items': items,
         'total_units': sum(item.quantity for item in items),
+    })
+
+
+# ---------------------------------------------------------------
+# CUSTOMERS (Phase 9)
+# ---------------------------------------------------------------
+@login_required
+def customer_list(request):
+    """
+    All customers, each with the number of bills and the total amount spent.
+    annotate() adds these two calculated columns to every customer
+    using ONE database query (a GROUP BY), not one query per customer.
+    Searching is done in the browser by jQuery (filters.js).
+    """
+    customers = Customer.objects.annotate(
+        bill_count=Count('sales'),
+        total_spent=Sum('sales__total_amount'),    # None if the customer has no sales
+    )
+    return render(request, 'customers/customer_list.html', {'customers': customers})
+
+
+@login_required
+def customer_detail(request, pk):
+    """One customer's details and purchase history (Date, Bill Number, Amount)."""
+    customer = Customer.objects.filter(pk=pk).first()
+    if customer is None:
+        messages.error(request, 'Customer not found. They may have been deleted.')
+        return redirect('customer_list')
+
+    sales = customer.sales.all()                    # related_name='sales' from Phase 4 (newest first)
+    total_spent = sales.aggregate(total=Sum('total_amount'))['total'] or 0
+
+    return render(request, 'customers/customer_detail.html', {
+        'customer': customer,
+        'sales': sales,
+        'bill_count': sales.count(),
+        'total_spent': total_spent,
+    })
+
+
+@login_required
+def customer_create(request):
+    if request.method == 'POST':
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            customer = form.save()
+            messages.success(request, f'Customer "{customer.name}" was added successfully.')
+            return redirect('customer_list')
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomerForm()
+
+    return render(request, 'customers/customer_form.html', {
+        'form': form,
+        'page_title': 'Add Customer',
+        'is_edit': False,
+    })
+
+
+@login_required
+def customer_update(request, pk):
+    customer = Customer.objects.filter(pk=pk).first()
+    if customer is None:
+        messages.error(request, 'Customer not found. They may have been deleted.')
+        return redirect('customer_list')
+
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Customer "{customer.name}" was updated.')
+            return redirect('customer_detail', pk=customer.pk)
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = CustomerForm(instance=customer)
+
+    return render(request, 'customers/customer_form.html', {
+        'form': form,
+        'customer': customer,
+        'page_title': 'Edit Customer',
+        'is_edit': True,
+    })
+
+
+@login_required
+def customer_delete(request, pk):
+    customer = Customer.objects.filter(pk=pk).first()
+    if customer is None:
+        messages.error(request, 'Customer not found. They may have been deleted.')
+        return redirect('customer_list')
+
+    if request.method == 'POST':
+        customer_name = customer.name
+        try:
+            customer.delete()
+        except ProtectedError:
+            # Sale.customer uses on_delete=PROTECT, so bills keep their customer.
+            messages.error(
+                request,
+                f'"{customer_name}" cannot be deleted because they have bills in the sales history.'
+            )
+            return redirect('customer_detail', pk=pk)
+
+        messages.success(request, f'Customer "{customer_name}" was deleted.')
+        return redirect('customer_list')
+
+    return render(request, 'customers/customer_confirm_delete.html', {
+        'customer': customer,
+        'bill_count': customer.sales.count(),
     })
