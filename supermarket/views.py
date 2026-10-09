@@ -15,10 +15,9 @@ from django.db.models import Count, ProtectedError, Sum
 from django.shortcuts import redirect, render
 
 from .billing_logic import BillingError, create_sale, parse_cart
-from .forms import CustomerForm, ProductForm, RestockForm
+from .forms import CustomerForm, ProductForm, RestockForm, SupplierForm
 from .inventory import low_stock_products, out_of_stock_products, stock_summary
-from .models import Category, Customer, Product, Sale
-
+from .models import Category, Customer, Product, Sale, Supplier
 
 # ---------------------------------------------------------------
 # Dashboard (temporary until Phase 12)
@@ -415,4 +414,110 @@ def customer_delete(request, pk):
     return render(request, 'customers/customer_confirm_delete.html', {
         'customer': customer,
         'bill_count': customer.sales.count(),
+    })
+
+# ---------------------------------------------------------------
+# SUPPLIERS (Phase 10)
+# ---------------------------------------------------------------
+@login_required
+def supplier_list(request):
+    """
+    All suppliers, each with the number of products they supply.
+    annotate(Count('products')) uses related_name='products' from Phase 4
+    and calculates every count in ONE query. Searching is done by jQuery (filters.js).
+    """
+    suppliers = Supplier.objects.annotate(product_count=Count('products'))
+    return render(request, 'suppliers/supplier_list.html', {'suppliers': suppliers})
+
+
+@login_required
+def supplier_detail(request, pk):
+    """One supplier's details and the list of products they supply."""
+    supplier = Supplier.objects.filter(pk=pk).first()
+    if supplier is None:
+        messages.error(request, 'Supplier not found. They may have been deleted.')
+        return redirect('supplier_list')
+
+    products = supplier.products.select_related('category')
+
+    # Products from this supplier that are low or out of stock (needs a restock order)
+    attention_count = sum(1 for product in products if product.stock_status != Product.IN_STOCK)
+
+    return render(request, 'suppliers/supplier_detail.html', {
+        'supplier': supplier,
+        'products': products,
+        'attention_count': attention_count,
+    })
+
+
+@login_required
+def supplier_create(request):
+    if request.method == 'POST':
+        form = SupplierForm(request.POST)
+        if form.is_valid():
+            supplier = form.save()
+            messages.success(request, f'Supplier "{supplier.name}" was added successfully.')
+            return redirect('supplier_list')
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = SupplierForm()
+
+    return render(request, 'suppliers/supplier_form.html', {
+        'form': form,
+        'page_title': 'Add Supplier',
+        'is_edit': False,
+    })
+
+
+@login_required
+def supplier_update(request, pk):
+    supplier = Supplier.objects.filter(pk=pk).first()
+    if supplier is None:
+        messages.error(request, 'Supplier not found. They may have been deleted.')
+        return redirect('supplier_list')
+
+    if request.method == 'POST':
+        form = SupplierForm(request.POST, instance=supplier)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Supplier "{supplier.name}" was updated.')
+            return redirect('supplier_detail', pk=supplier.pk)
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = SupplierForm(instance=supplier)
+
+    return render(request, 'suppliers/supplier_form.html', {
+        'form': form,
+        'supplier': supplier,
+        'page_title': 'Edit Supplier',
+        'is_edit': True,
+    })
+
+
+@login_required
+def supplier_delete(request, pk):
+    supplier = Supplier.objects.filter(pk=pk).first()
+    if supplier is None:
+        messages.error(request, 'Supplier not found. They may have been deleted.')
+        return redirect('supplier_list')
+
+    if request.method == 'POST':
+        supplier_name = supplier.name
+        try:
+            supplier.delete()
+        except ProtectedError:
+            # Product.supplier uses on_delete=PROTECT, so products keep their supplier.
+            messages.error(
+                request,
+                f'"{supplier_name}" cannot be deleted because they still supply products. '
+                'Change the supplier of those products first.'
+            )
+            return redirect('supplier_detail', pk=pk)
+
+        messages.success(request, f'Supplier "{supplier_name}" was deleted.')
+        return redirect('supplier_list')
+
+    return render(request, 'suppliers/supplier_confirm_delete.html', {
+        'supplier': supplier,
+        'product_count': supplier.products.count(),
     })

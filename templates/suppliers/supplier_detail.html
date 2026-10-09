@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ supplier.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'supplier_list' %}" class="text-decoration-none small">
+        <i class="bi bi-arrow-left"></i> Back to suppliers
+    </a>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-1">
+        <h1 class="h3 fw-bold mb-0">{{ supplier.name }}
+            <span class="text-muted fs-5 fw-normal">· {{ supplier.company }}</span>
+        </h1>
+        <div>
+            <a href="{% url 'supplier_update' supplier.pk %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </a>
+            <a href="{% url 'supplier_delete' supplier.pk %}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash me-1"></i> Delete
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-8">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h6 text-muted text-uppercase mb-3">Supplier details</h2>
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Supplier ID</dt>
+                    <dd class="col-sm-9">{{ supplier.id }}</dd>
+
+                    <dt class="col-sm-3">Contact person</dt>
+                    <dd class="col-sm-9">{{ supplier.name }}</dd>
+
+                    <dt class="col-sm-3">Company</dt>
+                    <dd class="col-sm-9">{{ supplier.company }}</dd>
+
+                    <dt class="col-sm-3">Phone</dt>
+                    <dd class="col-sm-9">{{ supplier.phone }}</dd>
+
+                    <dt class="col-sm-3">Email</dt>
+                    <dd class="col-sm-9">{{ supplier.email|default:"-" }}</dd>
+
+                    <dt class="col-sm-3">Address</dt>
+                    <dd class="col-sm-9">{{ supplier.address|default:"-"|linebreaksbr }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Products supplied</div>
+                <div class="fs-3 fw-bold text-success">{{ products|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card h-100 border-start border-4 {% if attention_count %}border-warning{% else %}border-secondary{% endif %}">
+            <div class="card-body">
+                <div class="text-muted small">Need restocking</div>
+                <div class="fs-3 fw-bold {% if attention_count %}text-warning{% endif %}">{{ attention_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="h5 mb-3">Products supplied</h2>
+{% if products %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th class="d-none d-sm-table-cell">Category</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Stock</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="{% if product.is_out_of_stock %}table-danger{% elif product.is_low_stock %}table-warning{% endif %}">
+                    <td class="fw-semibold">
+                        <a href="{% url 'product_detail' product.pk %}" class="text-decoration-none text-dark">{{ product.name }}</a>
+                    </td>
+                    <td class="d-none d-sm-table-cell">{{ product.category.name }}</td>
+                    <td class="text-end">₹{{ product.price|floatformat:2 }}</td>
+                    <td class="text-end fw-semibold">{{ product.quantity }}</td>
+                    <td><span class="badge {{ product.status_badge }}">{{ product.status_label }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if attention_count %}
+    <div class="card-footer bg-white">
+        <a href="{% url 'inventory_list' %}" class="btn btn-sm btn-success">
+            <i class="bi bi-box-arrow-in-down me-1"></i> Go to Inventory to restock
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-box-seam fs-1"></i>
+        <p class="mt-2 mb-3">This supplier does not supply any products yet.</p>
+        <a href="{% url 'product_create' %}" class="btn btn-success">Add a product</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

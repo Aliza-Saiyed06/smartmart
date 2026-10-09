@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 fw-bold mb-0">Suppliers</h1>
+        <p class="text-muted mb-0">
+            Showing <span class="filter-count" data-table="#supplier-table">{{ suppliers|length }}</span>
+            of {{ suppliers|length }} suppliers
+        </p>
+    </div>
+    <a href="{% url 'supplier_create' %}" class="btn btn-success">
+        <i class="bi bi-plus-lg me-1"></i> Add Supplier
+    </a>
+</div>
+
+<!-- ===== Live search (jQuery) ===== -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-control live-search" data-table="#supplier-table"
+                   placeholder="Search by name, company, phone or email...">
+        </div>
+    </div>
+</div>
+
+{% if suppliers %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="supplier-table">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Contact person</th>
+                    <th>Company</th>
+                    <th class="d-none d-md-table-cell">Phone</th>
+                    <th class="d-none d-lg-table-cell">Email</th>
+                    <th class="text-end">Products</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for supplier in suppliers %}
+                <tr data-search="{{ supplier.name|lower }} {{ supplier.company|lower }} {{ supplier.phone }} {{ supplier.email|lower }}">
+                    <td>{{ supplier.id }}</td>
+                    <td class="fw-semibold">
+                        <a href="{% url 'supplier_detail' supplier.pk %}" class="text-decoration-none text-dark">{{ supplier.name }}</a>
+                    </td>
+                    <td>{{ supplier.company }}</td>
+                    <td class="d-none d-md-table-cell">{{ supplier.phone }}</td>
+                    <td class="d-none d-lg-table-cell">{{ supplier.email|default:"-" }}</td>
+                    <td class="text-end">
+                        <span class="badge bg-secondary">{{ supplier.product_count }}</span>
+                    </td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <a href="{% url 'supplier_detail' supplier.pk %}" class="btn btn-outline-secondary" title="View">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'supplier_update' supplier.pk %}" class="btn btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'supplier_delete' supplier.pk %}" class="btn btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tr class="no-results-row" style="display: none;">
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-search me-1"></i> No suppliers match your search.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-truck fs-1"></i>
+        <p class="mt-2 mb-3">No suppliers yet.</p>
+        <a href="{% url 'supplier_create' %}" class="btn btn-success">Add your first supplier</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/filters.js' %}"></script>
+{% endblock %}

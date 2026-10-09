@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{% url 'supplier_list' %}" class="text-decoration-none small">
+        <i class="bi bi-arrow-left"></i> Back to suppliers
+    </a>
+    <h1 class="h3 fw-bold mb-0 mt-1">{{ page_title }}</h1>
+</div>
+
+<div class="row">
+    <div class="col-12 col-lg-8 col-xl-6">
+        <div class="card">
+            <div class="card-body p-4">
+
+                <!-- Errors that involve several fields (for example a duplicate supplier) -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                    </div>
+                {% endif %}
+
+                <!-- class="js-validate" activates static/js/validation.js -->
+                <form method="post" class="js-validate" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        {% include 'includes/form_field.html' with field=form.name %}
+                    </div>
+                    <div class="mb-3">
+                        {% include 'includes/form_field.html' with field=form.company %}
+                    </div>
+                    <div class="mb-3">
+                        {% include 'includes/form_field.html' with field=form.phone %}
+                    </div>
+                    <div class="mb-3">
+                        {% include 'includes/form_field.html' with field=form.email %}
+                    </div>
+                    <div class="mb-3">
+                        {% include 'includes/form_field.html' with field=form.address %}
+                    </div>
+
+                    <hr class="my-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i> {% if is_edit %}Save changes{% else %}Add supplier{% endif %}
+                    </button>
+                    <a href="{% url 'supplier_list' %}" class="btn btn-outline-secondary ms-1">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/validation.js' %}"></script>
+{% endblock %}

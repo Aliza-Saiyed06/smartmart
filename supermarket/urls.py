@@ -47,4 +47,11 @@ urlpatterns = [
     path('customers/<int:pk>/', views.customer_detail, name='customer_detail'),
     path('customers/<int:pk>/edit/', views.customer_update, name='customer_update'),
     path('customers/<int:pk>/delete/', views.customer_delete, name='customer_delete'),
+
+    # Suppliers (Phase 10)
+    path('suppliers/', views.supplier_list, name='supplier_list'),
+    path('suppliers/add/', views.supplier_create, name='supplier_create'),
+    path('suppliers/<int:pk>/', views.supplier_detail, name='supplier_detail'),
+    path('suppliers/<int:pk>/edit/', views.supplier_update, name='supplier_update'),
+    path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
 ]

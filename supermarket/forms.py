@@ -11,7 +11,7 @@ from datetime import date
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
 
-from .models import Customer, Product
+from .models import Customer, Product, Supplier
 
 
 # ---------------------------------------------------------------
@@ -162,7 +162,7 @@ class RestockForm(BootstrapFormMixin, forms.Form):
         },
     )
 
-    # ---------------------------------------------------------------
+# ---------------------------------------------------------------
 # Customer form (Phase 9)
 # ---------------------------------------------------------------
 class CustomerForm(BootstrapFormMixin, forms.ModelForm):
@@ -211,3 +211,80 @@ class CustomerForm(BootstrapFormMixin, forms.ModelForm):
                 'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.'
             )
         return phone
+
+# ---------------------------------------------------------------
+# Supplier form (Phase 10)
+# ---------------------------------------------------------------
+class SupplierForm(BootstrapFormMixin, forms.ModelForm):
+    """Used for both 'Add supplier' and 'Edit supplier'."""
+
+    class Meta:
+        model = Supplier
+        fields = ['name', 'company', 'phone', 'email', 'address']
+        labels = {
+            'name': 'Contact person',
+            'company': 'Company name',
+            'phone': 'Phone number',
+            'email': 'Email',
+            'address': 'Address',
+        }
+        help_texts = {
+            'phone': '10-digit mobile number starting with 6, 7, 8 or 9.',
+            'email': 'Optional.',
+            'address': 'Optional.',
+        }
+        widgets = {
+            # pattern + data-pattern-message are read by static/js/validation.js
+            'phone': forms.TextInput(attrs={
+                'pattern': '[6-9][0-9]{9}',
+                'data-pattern-message': 'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.',
+                'maxlength': '10',
+                'inputmode': 'numeric',
+                'placeholder': 'e.g. 9876543210',
+            }),
+            'email': forms.EmailInput(attrs={'placeholder': 'name@company.com'}),
+            'address': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    # ----- Server-side validation -----
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        if len(name) < 2:
+            raise forms.ValidationError('Contact person must have at least 2 characters.')
+        return name
+
+    def clean_company(self):
+        company = self.cleaned_data['company'].strip()
+        if len(company) < 2:
+            raise forms.ValidationError('Company name must have at least 2 characters.')
+        return company
+
+    def clean_phone(self):
+        # Remove spaces and dashes the user may have typed: "98765 43210" -> "9876543210"
+        phone = self.cleaned_data['phone'].replace(' ', '').replace('-', '')
+        if not phone.isdigit() or len(phone) != 10 or phone[0] not in '6789':
+            raise forms.ValidationError(
+                'Enter a valid 10-digit mobile number starting with 6, 7, 8 or 9.'
+            )
+        return phone
+
+    def clean(self):
+        """
+        Checks that involve more than one field.
+        The Supplier model has no unique column (two companies may share a contact
+        person), so we check the combination: the same contact person AND company
+        must not be saved twice.
+        """
+        cleaned_data = super().clean()
+        name = cleaned_data.get('name')
+        company = cleaned_data.get('company')
+
+        if name and company:
+            duplicates = Supplier.objects.filter(name__iexact=name, company__iexact=company)
+            if self.instance.pk:                       # editing: ignore the supplier itself
+                duplicates = duplicates.exclude(pk=self.instance.pk)
+            if duplicates.exists():
+                raise forms.ValidationError(
+                    'This supplier already exists (same contact person and company).'
+                )
+        return cleaned_data
