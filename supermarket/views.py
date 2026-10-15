@@ -5,7 +5,7 @@ A view receives a web request, does some work, and returns a web page.
 Every view has @login_required, so only logged-in users can open it.
 """
 
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 
 import django
 from django.contrib import messages
@@ -17,7 +17,7 @@ from django.shortcuts import redirect, render
 from .billing_logic import BillingError, create_sale, parse_cart
 from .forms import CustomerForm, ProductForm, RestockForm, SupplierForm
 from .inventory import low_stock_products, out_of_stock_products, stock_summary
-from .models import Category, Customer, Product, Sale, Supplier
+from .models import Category, Customer, Product, Sale, SaleItem, Supplier
 
 # ---------------------------------------------------------------
 # Dashboard (temporary until Phase 12)
@@ -520,4 +520,98 @@ def supplier_delete(request, pk):
     return render(request, 'suppliers/supplier_confirm_delete.html', {
         'supplier': supplier,
         'product_count': supplier.products.count(),
+    })
+
+# ---------------------------------------------------------------
+# SALES (Phase 11)
+# ---------------------------------------------------------------
+def parse_date(text):
+    """
+    Turns '2026-10-15' into a date. Returns None for empty or invalid text.
+    The year limit also protects against absurd values such as year 9999.
+    """
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.year < 2000 or parsed.year > 2100:
+        return None
+    return parsed
+
+
+@login_required
+def sale_list(request):
+    """
+    All bills, newest first.
+    Date range  -> filtered here on the server (?from=...&to=...)
+    Search and payment-method filter -> done in the browser by jQuery (filters.js)
+    """
+    from_text = request.GET.get('from', '').strip()
+    to_text = request.GET.get('to', '').strip()
+    date_from = parse_date(from_text)
+    date_to = parse_date(to_text)
+
+    # A date was typed but could not be understood: tell the user and ignore it
+    if (from_text and date_from is None) or (to_text and date_to is None):
+        messages.error(request, 'Invalid date entered. Please use the date pickers.')
+        if from_text and date_from is None:
+            from_text = ''
+        if to_text and date_to is None:
+            to_text = ''
+
+    # "From" later than "To": swap them instead of showing nothing
+    if date_from and date_to and date_from > date_to:
+        date_from, date_to = date_to, date_from
+        messages.warning(request, 'The "From" date was after the "To" date, so they were swapped.')
+
+    sales = Sale.objects.all()
+    if date_from:
+        sales = sales.filter(date__gte=datetime.combine(date_from, time.min))
+    if date_to:
+        # less than the START of the next day = includes the whole "To" day
+        sales = sales.filter(date__lt=datetime.combine(date_to + timedelta(days=1), time.min))
+
+    # Summary numbers for the selected date range
+    totals = sales.aggregate(revenue=Sum('total_amount'), bills=Count('id'))
+    revenue = totals['revenue'] or 0
+    bills = totals['bills']
+    units = SaleItem.objects.filter(sale__in=sales).aggregate(total=Sum('quantity'))['total'] or 0
+    average = revenue / bills if bills else 0
+
+    # The rows: annotate adds "units" (items on that bill) with one query
+    sale_rows = sales.select_related('customer').annotate(units=Sum('items__quantity'))
+
+    today = date.today()
+    context = {
+        'sales': sale_rows,
+        'revenue': revenue,
+        'bills': bills,
+        'units': units,
+        'average': average,
+        'from_value': date_from.isoformat() if date_from else '',
+        'to_value': date_to.isoformat() if date_to else '',
+        'is_filtered': bool(date_from or date_to),
+        'payment_choices': Sale.PAYMENT_CHOICES,
+        # values for the shortcut buttons
+        'today_value': today.isoformat(),
+        'week_start_value': (today - timedelta(days=6)).isoformat(),
+        'month_start_value': today.replace(day=1).isoformat(),
+    }
+    return render(request, 'sales/sale_list.html', context)
+
+
+@login_required
+def sale_detail(request, pk):
+    """One bill with every product line: Product, Quantity, Price, Subtotal."""
+    sale = Sale.objects.select_related('customer').filter(pk=pk).first()
+    if sale is None:
+        messages.error(request, 'Sale not found.')
+        return redirect('sale_list')
+
+    items = list(sale.items.select_related('product__category'))
+
+    return render(request, 'sales/sale_detail.html', {
+        'sale': sale,
+        'items': items,
+        'total_units': sum(item.quantity for item in items),
     })

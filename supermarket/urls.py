@@ -54,4 +54,8 @@ urlpatterns = [
     path('suppliers/<int:pk>/', views.supplier_detail, name='supplier_detail'),
     path('suppliers/<int:pk>/edit/', views.supplier_update, name='supplier_update'),
     path('suppliers/<int:pk>/delete/', views.supplier_delete, name='supplier_delete'),
+
+    # Sales (Phase 11)
+    path('sales/', views.sale_list, name='sale_list'),
+    path('sales/<int:pk>/', views.sale_detail, name='sale_detail'),
 ]

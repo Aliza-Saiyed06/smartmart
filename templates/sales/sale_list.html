@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sales{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 fw-bold mb-0">Sales</h1>
+        <p class="text-muted mb-0">
+            Showing <span class="filter-count" data-table="#sales-table">{{ bills }}</span>
+            of {{ bills }} bill{{ bills|pluralize }}
+            {% if is_filtered %}in the selected date range{% endif %}
+        </p>
+    </div>
+    <a href="{% url 'billing' %}" class="btn btn-success">
+        <i class="bi bi-receipt me-1"></i> New Bill
+    </a>
+</div>
+
+<!-- ===== Summary cards (for the selected date range) ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Bills</div>
+                <div class="fs-3 fw-bold text-primary">{{ bills }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Total sales</div>
+                <div class="fs-3 fw-bold text-success">₹{{ revenue|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Items sold</div>
+                <div class="fs-3 fw-bold">{{ units }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100 border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="text-muted small">Average bill</div>
+                <div class="fs-3 fw-bold">₹{{ average|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Filters ===== -->
+<div class="card mb-3">
+    <div class="card-body">
+
+        <!-- Date range: submitted to the server (page reloads) -->
+        <form method="get" action="{% url 'sale_list' %}" class="row g-2 align-items-end mb-3">
+            <div class="col-6 col-md-3">
+                <label for="from-date" class="form-label small mb-1">From date</label>
+                <input type="date" id="from-date" name="from" class="form-control"
+                       value="{{ from_value }}" max="{{ today_value }}">
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="to-date" class="form-label small mb-1">To date</label>
+                <input type="date" id="to-date" name="to" class="form-control"
+                       value="{{ to_value }}" max="{{ today_value }}">
+            </div>
+            <div class="col-12 col-md-6 d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-funnel me-1"></i> Apply dates
+                </button>
+                <a href="?from={{ today_value }}&to={{ today_value }}" class="btn btn-outline-secondary">Today</a>
+                <a href="?from={{ week_start_value }}&to={{ today_value }}" class="btn btn-outline-secondary">Last 7 days</a>
+                <a href="?from={{ month_start_value }}&to={{ today_value }}" class="btn btn-outline-secondary">This month</a>
+                <a href="{% url 'sale_list' %}" class="btn btn-outline-danger">Clear</a>
+            </div>
+        </form>
+
+        <!-- Search and payment filter: done instantly by jQuery (no reload) -->
+        <div class="row g-2">
+            <div class="col-12 col-md-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-control live-search" data-table="#sales-table"
+                           placeholder="Search by bill number, customer name or phone...">
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <select class="form-select live-filter" data-table="#sales-table" data-field="payment"
+                        aria-label="Filter by payment method">
+                    <option value="">All payment methods</option>
+                    {% for value, label in payment_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Sales table ===== -->
+{% if sales %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="sales-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Sale ID</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th class="text-end d-none d-md-table-cell">Items</th>
+                    <th class="text-end">Total</th>
+                    <th>Payment</th>
+                    <th class="text-end">View</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr data-search="{{ sale.bill_number|lower }} {{ sale.customer.name|lower }} {{ sale.customer.phone }} {% if not sale.customer %}walk-in{% endif %}"
+                    data-payment="{{ sale.payment_method }}">
+                    <td class="fw-semibold">
+                        <a href="{% url 'sale_detail' sale.pk %}" class="text-decoration-none text-dark">{{ sale.bill_number }}</a>
+                    </td>
+                    <td>{{ sale.date|date:"d M Y, h:i A" }}</td>
+                    <td>
+                        {% if sale.customer %}
+                            <a href="{% url 'customer_detail' sale.customer.pk %}" class="text-decoration-none">{{ sale.customer.name }}</a>
+                        {% else %}
+                            <span class="text-muted">Walk-in</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end d-none d-md-table-cell">{{ sale.units }}</td>
+                    <td class="text-end fw-semibold">₹{{ sale.total_amount|floatformat:2 }}</td>
+                    <td>
+                        <span class="badge {% if sale.payment_method == 'CASH' %}bg-success{% elif sale.payment_method == 'UPI' %}bg-primary{% else %}bg-dark{% endif %}">
+                            {{ sale.get_payment_method_display }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'sale_detail' sale.pk %}" class="btn btn-sm btn-outline-secondary" title="View details">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tr class="no-results-row" style="display: none;">
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-search me-1"></i> No sales match your search.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-cash-stack fs-1"></i>
+        {% if is_filtered %}
+            <p class="mt-2 mb-3">No sales found in this date range.</p>
+            <a href="{% url 'sale_list' %}" class="btn btn-outline-secondary">Clear date filter</a>
+        {% else %}
+            <p class="mt-2 mb-3">No sales yet. Generate your first bill.</p>
+            <a href="{% url 'billing' %}" class="btn btn-success">Go to Billing</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/filters.js' %}"></script>
+{% endblock %}
