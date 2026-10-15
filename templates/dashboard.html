@@ -3,107 +3,240 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="mb-4">
-    <h1 class="h3 fw-bold mb-1">SmartMart Dashboard</h1>
-    <p class="text-muted mb-0">Supermarket Management &amp; Sales Analytics System</p>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h3 fw-bold mb-0">SmartMart Dashboard</h1>
+        <p class="text-muted mb-0">Supermarket Management &amp; Sales Analytics System</p>
+    </div>
+    <a href="{% url 'billing' %}" class="btn btn-success">
+        <i class="bi bi-receipt me-1"></i> New Bill
+    </a>
 </div>
 
-<div class="alert alert-success">
-    <i class="bi bi-check-circle-fill me-2"></i>
-    <strong>Phase 3 complete.</strong> Django is running. The real dashboard is built in Phase 12.
-</div>
-
-<h2 class="h5 mb-3">System check</h2>
-<div class="row g-3 mb-4">
-
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100">
+<!-- ===== Row 1: main numbers ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'product_list' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-primary">
+                <div class="card-body">
+                    <div class="text-muted small">Products</div>
+                    <div class="fs-3 fw-bold text-dark">{{ total_products }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'customer_list' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-info">
+                <div class="card-body">
+                    <div class="text-muted small">Customers</div>
+                    <div class="fs-3 fw-bold text-dark">{{ total_customers }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'supplier_list' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-secondary">
+                <div class="card-body">
+                    <div class="text-muted small">Suppliers</div>
+                    <div class="fs-3 fw-bold text-dark">{{ total_suppliers }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'sale_list' %}?from={% now 'Y-m-d' %}&to={% now 'Y-m-d' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-success">
+                <div class="card-body">
+                    <div class="text-muted small">Today's sales</div>
+                    <div class="fs-3 fw-bold text-success">₹{{ today_sales|floatformat:0 }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="{% url 'sale_list' %}?from={% now 'Y-m-d' %}&to={% now 'Y-m-d' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-success">
+                <div class="card-body">
+                    <div class="text-muted small">Orders today</div>
+                    <div class="fs-3 fw-bold text-dark">{{ today_orders }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="card h-100 border-start border-4 border-warning">
             <div class="card-body">
-                <div class="text-muted small">Django</div>
-                <div class="fs-5 fw-semibold">Version {{ django_version }}</div>
-                <span class="badge bg-success mt-2">Working</span>
+                <div class="text-muted small">Products sold</div>
+                <div class="fs-3 fw-bold">{{ total_units_sold }}</div>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="card h-100">
+<!-- ===== Row 2: stock alerts + best sellers ===== -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'inventory_list' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-warning">
+                <div class="card-body">
+                    <div class="text-muted small">Low stock products</div>
+                    <div class="fs-3 fw-bold text-warning">{{ low_count }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'inventory_list' %}" class="text-decoration-none">
+            <div class="card h-100 status-card border-start border-4 border-danger">
+                <div class="card-body">
+                    <div class="text-muted small">Out of stock products</div>
+                    <div class="fs-3 fw-bold text-danger">{{ out_count }}</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 bg-success-subtle">
             <div class="card-body">
-                <div class="text-muted small">MySQL database</div>
-                {% if database_ok %}
-                    <div class="fs-5 fw-semibold">{{ database_name }}</div>
-                    <div class="small text-muted">MySQL {{ mysql_version }}</div>
-                    <span class="badge bg-success mt-2">Connected</span>
+                <div class="small fw-semibold text-uppercase text-success">Best selling product</div>
+                {% if best_product %}
+                    <div class="fs-4 fw-bold">🥇 {{ best_product.product__name }}</div>
+                    <div class="text-muted">Quantity sold: <strong>{{ best_product.units }} units</strong></div>
                 {% else %}
-                    <div class="fs-5 fw-semibold">{{ database_name }}</div>
-                    <span class="badge bg-danger mt-2">Not connected</span>
-                    <div class="small text-danger mt-2">Check the DB_ values in your .env file.</div>
+                    <div class="text-muted mt-2">No sales yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-3">
+        <div class="card h-100 bg-primary-subtle">
+            <div class="card-body">
+                <div class="small fw-semibold text-uppercase text-primary">Best selling category</div>
+                {% if best_category %}
+                    <div class="fs-4 fw-bold">🥇 {{ best_category.product__category__name }}</div>
+                    <div class="text-muted">Sales: <strong>₹{{ best_category.sales|floatformat:0 }}</strong></div>
+                {% else %}
+                    <div class="text-muted mt-2">No sales yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+    <!-- ===== Sales trend ===== -->
+    <div class="col-12 col-lg-7">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between">
+                <span><i class="bi bi-graph-up me-1"></i> Sales trend (last 7 days)</span>
+                <span class="text-muted small fw-normal">Week total: ₹{{ week_total|floatformat:0 }}</span>
+            </div>
+            <div class="card-body">
+                <div class="trend-chart">
+                    {% for day in trend %}
+                    <div class="trend-col" title="{{ day.date|date:'d M Y' }}: ₹{{ day.total|floatformat:2 }}">
+                        <div class="trend-value small text-muted">{% if day.total %}₹{{ day.total|floatformat:0 }}{% else %}&nbsp;{% endif %}</div>
+                        <div class="trend-bar-wrap">
+                            <div class="trend-bar" style="--bar-height: {{ day.percent }}%;"></div>
+                        </div>
+                        <div class="small fw-semibold mt-1">{{ day.label }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if not week_total %}
+                    <p class="text-muted small text-center mt-3 mb-0">No sales in the last 7 days. Generate a bill to see the chart.</p>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
+    <!-- ===== Low stock ===== -->
+    <div class="col-12 col-lg-5">
         <div class="card h-100">
+            <div class="card-header bg-warning-subtle fw-semibold">
+                <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> LOW STOCK PRODUCTS
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for product in low_products %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="fw-semibold">{{ product.name }}</span>
+                    <span class="text-warning fw-semibold">{{ product.quantity }} unit{{ product.quantity|pluralize }}</span>
+                </li>
+                {% endfor %}
+                {% for product in out_products %}
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="fw-semibold">{{ product.name }}</span>
+                    <span class="badge bg-danger align-self-center">OUT OF STOCK</span>
+                </li>
+                {% endfor %}
+                {% if not low_products and not out_products %}
+                <li class="list-group-item text-muted">
+                    <i class="bi bi-check-circle text-success me-1"></i> All products are well stocked.
+                </li>
+                {% endif %}
+            </ul>
+            {% if low_count or out_count %}
+            <div class="card-footer bg-white">
+                <a href="{% url 'inventory_list' %}" class="btn btn-sm btn-success">
+                    <i class="bi bi-box-arrow-in-down me-1"></i> Go to Inventory
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+
+    <!-- ===== Best selling products ===== -->
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-trophy me-1"></i> Best-selling products (by quantity)
+            </div>
             <div class="card-body">
-                <div class="text-muted small">Bootstrap 5 (JavaScript)</div>
-                <div class="fs-5 fw-semibold">Components</div>
-                <span id="bootstrap-status" class="badge bg-secondary mt-2">Checking...</span>
+                {% for row in top_products %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span class="fw-semibold">{{ forloop.counter }}. {{ row.product__name }}</span>
+                        <span>{{ row.units }} units</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-success" style="--bar-width: {{ row.percent }}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No sales yet.</p>
+                {% endfor %}
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
+    <!-- ===== Category sales ===== -->
+    <div class="col-12 col-lg-6">
         <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-pie-chart me-1"></i> Category sales (by amount)
+            </div>
             <div class="card-body">
-                <div class="text-muted small">jQuery</div>
-                <div class="fs-5 fw-semibold">DOM manipulation</div>
-                <span id="jquery-status" class="badge bg-secondary mt-2">Checking...</span>
+                {% for row in category_sales %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small">
+                        <span class="fw-semibold">{{ row.product__category__name }}</span>
+                        <span>₹{{ row.sales|floatformat:0 }} · {{ row.units }} units</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" style="--bar-width: {{ row.percent }}%;"></div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No sales yet.</p>
+                {% endfor %}
             </div>
         </div>
     </div>
-
 </div>
-
-<h2 class="h5 mb-3">Planned modules</h2>
-<div class="card">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Module</th>
-                    <th>Built in</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Products</td><td>Phase 6</td></tr>
-                <tr><td>Inventory</td><td>Phase 7</td></tr>
-                <tr><td>Billing</td><td>Phase 8</td></tr>
-                <tr><td>Customers and Suppliers</td><td>Phases 9 and 10</td></tr>
-                <tr><td>Sales</td><td>Phase 11</td></tr>
-                <tr><td>Analytics and Restock</td><td>Phases 13 and 14</td></tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endblock %}
-
-
-{% block extra_js %}
-<script>
-    // jQuery test: $(document).ready runs when the page has finished loading.
-    $(document).ready(function () {
-        $('#jquery-status')
-            .removeClass('bg-secondary')
-            .addClass('bg-success')
-            .text('Working');
-
-        // Plain JavaScript test: 'bootstrap' exists only if Bootstrap's JS loaded.
-        if (typeof bootstrap !== 'undefined') {
-            var badge = document.getElementById('bootstrap-status');
-            badge.className = 'badge bg-success mt-2';
-            badge.textContent = 'Working';
-        }
-    });
-</script>
-{% endblock %}
+{% endblock %}  

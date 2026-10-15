@@ -198,3 +198,43 @@ body {
         box-shadow: none !important;
     }
 }
+
+/* ---------- Dashboard sales trend ---------- */
+.trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.trend-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.trend-value {
+    font-size: 0.7rem;
+    white-space: nowrap;
+}
+
+/* A fixed-height box; the bar inside takes a percentage of it */
+.trend-bar-wrap {
+    width: 100%;
+    height: 150px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.trend-bar {
+    width: 100%;
+    min-height: 3px;
+    background-color: var(--sm-green);
+    border-radius: 0.35rem 0.35rem 0 0;
+}
+
+a .status-card .text-muted {
+    text-decoration: none;
+}

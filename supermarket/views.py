@@ -25,25 +25,83 @@ from .models import Category, Customer, Product, Sale, SaleItem, Supplier
 @login_required
 def dashboard(request):
     """
-    Temporary dashboard (Phase 3).
-
-    It only checks that Django can talk to MySQL.
-    The real dashboard with sales cards and low-stock alerts is built in Phase 12.
+    The home page: summary cards, 7-day sales trend, best sellers,
+    category sales and the low-stock list.
+    Every number comes from the database, so it updates after each bill.
     """
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT VERSION()')
-            mysql_version = cursor.fetchone()[0]
-        database_ok = True
-    except Exception:
-        mysql_version = None
-        database_ok = False
+    today = date.today()
+    start_of_today = datetime.combine(today, time.min)
+    start_of_tomorrow = start_of_today + timedelta(days=1)
+
+    # ---------- Today ----------
+    today_totals = Sale.objects.filter(
+        date__gte=start_of_today, date__lt=start_of_tomorrow
+    ).aggregate(revenue=Sum('total_amount'), orders=Count('id'))
+
+    # ---------- All-time sales analysis (SaleItem rows) ----------
+    # values() = GROUP BY, annotate() = the calculation for each group
+    top_products = list(
+        SaleItem.objects.values('product__name')
+        .annotate(units=Sum('quantity'))
+        .order_by('-units')[:5]
+    )
+    category_sales = list(
+        SaleItem.objects.values('product__category__name')
+        .annotate(sales=Sum('subtotal'), units=Sum('quantity'))
+        .order_by('-sales')
+    )
+    total_units_sold = SaleItem.objects.aggregate(total=Sum('quantity'))['total'] or 0
+
+    best_product = top_products[0] if top_products else None
+    best_category = category_sales[0] if category_sales else None
+
+    # Bar widths for the category list (biggest category = 100%)
+    if category_sales:
+        biggest = category_sales[0]['sales']
+        for row in category_sales:
+            row['percent'] = int(row['sales'] * 100 / biggest) if biggest else 0
+
+    # Bar widths for the top products list
+    if top_products:
+        biggest_units = top_products[0]['units']
+        for row in top_products:
+            row['percent'] = int(row['units'] * 100 / biggest_units) if biggest_units else 0
+
+    # ---------- Sales trend: last 7 days ----------
+    trend = []
+    for days_ago in range(6, -1, -1):                      # 6 days ago ... today
+        day = today - timedelta(days=days_ago)
+        day_start = datetime.combine(day, time.min)
+        total = Sale.objects.filter(
+            date__gte=day_start, date__lt=day_start + timedelta(days=1)
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
+        trend.append({'label': day.strftime('%a'), 'date': day, 'total': total})
+
+    highest_day = max(item['total'] for item in trend)
+    for item in trend:
+        item['percent'] = int(item['total'] * 100 / highest_day) if highest_day else 0
+    week_total = sum(item['total'] for item in trend)
+
+    # ---------- Stock ----------
+    summary = stock_summary()                              # from inventory.py (Phase 7)
 
     context = {
-        'django_version': django.get_version(),
-        'database_ok': database_ok,
-        'mysql_version': mysql_version,
-        'database_name': connection.settings_dict['NAME'],
+        'total_products': summary['total'],
+        'total_customers': Customer.objects.count(),
+        'total_suppliers': Supplier.objects.count(),
+        'today_sales': today_totals['revenue'] or 0,
+        'today_orders': today_totals['orders'],
+        'low_count': summary['low'],
+        'out_count': summary['out'],
+        'total_units_sold': total_units_sold,
+        'best_product': best_product,
+        'best_category': best_category,
+        'top_products': top_products,
+        'category_sales': category_sales,
+        'trend': trend,
+        'week_total': week_total,
+        'low_products': low_stock_products()[:5],
+        'out_products': out_of_stock_products()[:5],
     }
     return render(request, 'dashboard.html', context)
 
