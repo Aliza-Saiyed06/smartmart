@@ -58,4 +58,7 @@ urlpatterns = [
     # Sales (Phase 11)
     path('sales/', views.sale_list, name='sale_list'),
     path('sales/<int:pk>/', views.sale_detail, name='sale_detail'),
+
+    # Restock recommendations (Phase 14)
+    path('restock/', views.restock_page, name='restock'),
 ]

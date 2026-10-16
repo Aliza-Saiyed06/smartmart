@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Restock Recommendations{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <h1 class="h3 fw-bold mb-0">Restock Recommendations</h1>
+    <p class="text-muted mb-0">A simple rule based on past sales. No machine learning.</p>
+</div>
+
+<!-- ===== How it works ===== -->
+<div class="card mb-3 border-start border-4 border-success">
+    <div class="card-body">
+        <h2 class="h6 text-uppercase text-success mb-2">How the recommendation is calculated</h2>
+        <ol class="mb-2 small">
+            <li><strong>Average daily sales</strong> = units sold in the last {{ lookback_days }} days ÷ {{ lookback_days }}</li>
+            <li><strong>Recommended stock</strong> = average daily sales × {{ planning_days }} planning days (rounded up)</li>
+            <li><strong>Restock quantity</strong> = recommended stock − current stock (never below 0)</li>
+        </ol>
+        <div class="small text-muted">
+            Example: Milk sells 12 per day. For 5 days we want 12 × 5 = 60 units. If 8 are in stock, order 60 − 8 = <strong>52</strong>.
+        </div>
+    </div>
+</div>
+
+<!-- ===== Settings ===== -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" action="{% url 'restock' %}" class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label for="days" class="form-label small mb-1">Average sales of the last</label>
+                <select name="days" id="days" class="form-select">
+                    <option value="7" {% if lookback_days == 7 %}selected{% endif %}>7 days</option>
+                    <option value="30" {% if lookback_days == 30 %}selected{% endif %}>30 days</option>
+                    <option value="60" {% if lookback_days == 60 %}selected{% endif %}>60 days</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="planning" class="form-label small mb-1">Stock should last (days)</label>
+                <input type="number" name="planning" id="planning" class="form-control"
+                       min="1" max="30" step="1" value="{{ planning_days }}">
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-calculator me-1"></i> Calculate
+                </button>
+                <a href="{% url 'restock' %}" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ===== Summary ===== -->
+<div class="row g-3 mb-3">
+    <div class="col-6">
+        <div class="card h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Products to restock</div>
+                <div class="fs-3 fw-bold text-warning">{{ needs_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="card h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Total units to order</div>
+                <div class="fs-3 fw-bold text-success">{{ total_to_order }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Search + filter ===== -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-12 col-md-7">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-control live-search" data-table="#restock-table"
+                           placeholder="Search by product, category or supplier...">
+                </div>
+            </div>
+            <div class="col-12 col-md-5">
+                <select class="form-select live-filter" data-table="#restock-table" data-field="needs"
+                        aria-label="Filter by restock need">
+                    <option value="">All products</option>
+                    <option value="yes">Needs restock only</option>
+                    <option value="no">Stock is enough</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Table ===== -->
+{% if rows %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="restock-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Product</th>
+                    <th class="text-end">Current stock</th>
+                    <th class="text-end d-none d-sm-table-cell">Avg daily sales</th>
+                    <th class="text-end d-none d-md-table-cell">Recommended stock</th>
+                    <th class="text-end">Restock quantity</th>
+                    <th class="d-none d-lg-table-cell">Calculation</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr class="{% if row.product.is_out_of_stock %}table-danger{% elif row.product.is_low_stock %}table-warning{% endif %}"
+                    data-search="{{ row.product.name|lower }} {{ row.product.category.name|lower }} {{ row.product.supplier.name|lower }} {{ row.product.supplier.company|lower }}"
+                    data-needs="{% if row.needs_restock %}yes{% else %}no{% endif %}">
+                    <td>
+                        <a href="{% url 'product_detail' row.product.pk %}" class="fw-semibold text-decoration-none text-dark">{{ row.product.name }}</a>
+                        <div>
+                            <span class="badge {{ row.product.status_badge }}">{{ row.product.status_label }}</span>
+                            {% if not row.units_sold %}<span class="badge bg-secondary">No recent sales</span>{% endif %}
+                        </div>
+                    </td>
+                    <td class="text-end fw-semibold">{{ row.product.quantity }}</td>
+                    <td class="text-end d-none d-sm-table-cell">{{ row.average_daily|floatformat:1 }}</td>
+                    <td class="text-end d-none d-md-table-cell">{{ row.recommended }}</td>
+                    <td class="text-end">
+                        {% if row.needs_restock %}
+                            <span class="fs-5 fw-bold text-success">{{ row.restock }}</span>
+                        {% else %}
+                            <span class="text-muted">0</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted d-none d-lg-table-cell">{{ row.explanation }}</td>
+                    <td class="text-end">
+                        {% if row.needs_restock %}
+                        <button type="button" class="btn btn-sm btn-success restock-btn"
+                                data-bs-toggle="modal" data-bs-target="#restockModal"
+                                data-url="{% url 'inventory_restock' row.product.pk %}"
+                                data-name="{{ row.product.name }}"
+                                data-stock="{{ row.product.quantity }}"
+                                data-recommended="{{ row.restock }}">
+                            <i class="bi bi-plus-circle me-1"></i> Restock
+                        </button>
+                        {% else %}
+                            <i class="bi bi-check-circle text-success" title="Stock is enough"></i>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tr class="no-results-row" style="display: none;">
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-search me-1"></i> No products match your search.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-arrow-repeat fs-1"></i>
+        <p class="mt-2 mb-3">There are no products yet.</p>
+        <a href="{% url 'product_create' %}" class="btn btn-success">Add a product</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- ===== Restock modal (same idea as the Inventory page) ===== -->
+<div class="modal fade" id="restockModal" tabindex="-1" aria-labelledby="restockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" id="restock-form" action="" class="js-validate" novalidate>
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h2 class="modal-title h5" id="restockModalLabel">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Restock product
+                    </h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-1">Product: <strong id="restock-product-name"></strong></p>
+                    <p class="mb-3">Current stock: <strong id="restock-current-stock"></strong> units</p>
+                    <div class="mb-1">
+                        {% include 'includes/form_field.html' with field=restock_form.quantity %}
+                    </div>
+                    <div class="form-text">The box is filled with the recommended quantity. You can change it.</div>
+                    <div class="form-text text-success fw-semibold" id="restock-preview"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-lg me-1"></i> Add to stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="{% static 'js/filters.js' %}"></script>
+<script src="{% static 'js/validation.js' %}"></script>
+<script>
+    $(document).ready(function () {
+        var currentStock = 0;
+
+        function updatePreview() {
+            var units = parseInt($('#id_quantity').val(), 10);
+            if (isNaN(units) || units < 1) {
+                $('#restock-preview').text('');
+            } else {
+                $('#restock-preview').text('New stock will be ' + (currentStock + units) + ' units.');
+            }
+        }
+
+        // A Restock button was clicked: fill the modal (Bootstrap opens it)
+        $('.restock-btn').on('click', function () {
+            currentStock = parseInt($(this).attr('data-stock'), 10);
+
+            $('#restock-product-name').text($(this).attr('data-name'));
+            $('#restock-current-stock').text(currentStock);
+            $('#restock-form').attr('action', $(this).attr('data-url'));
+            $('#id_quantity').val($(this).attr('data-recommended')).removeClass('is-invalid');
+            $('#restock-form .invalid-feedback').text('');
+            updatePreview();
+        });
+
+        $('#id_quantity').on('input', updatePreview);
+    });
+
+    document.getElementById('restockModal').addEventListener('shown.bs.modal', function () {
+        document.getElementById('id_quantity').select();
+    });
+</script>
+{% endblock %}

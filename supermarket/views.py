@@ -17,6 +17,7 @@ from django.shortcuts import redirect, render
 from .billing_logic import BillingError, create_sale, parse_cart
 from .forms import CustomerForm, ProductForm, RestockForm, SupplierForm
 from .inventory import low_stock_products, out_of_stock_products, stock_summary
+from .restock import build_recommendations
 from .models import Category, Customer, Product, Sale, SaleItem, Supplier
 
 # ---------------------------------------------------------------
@@ -672,4 +673,39 @@ def sale_detail(request, pk):
         'sale': sale,
         'items': items,
         'total_units': sum(item.quantity for item in items),
+    })
+
+# ---------------------------------------------------------------
+# RESTOCK RECOMMENDATIONS (Phase 14)
+# ---------------------------------------------------------------
+@login_required
+def restock_page(request):
+    """
+    Shows how much of each product to order.
+    ?days=30      -> how many past days of sales to average (7, 30 or 60)
+    ?planning=5   -> how many days the new stock should last (1 to 30)
+    """
+    lookback_days = 30
+    planning_days = 5
+
+    days_text = request.GET.get('days', '')
+    if days_text in ('7', '30', '60'):
+        lookback_days = int(days_text)
+
+    planning_text = request.GET.get('planning', '')
+    if planning_text:
+        if planning_text.isdigit() and 1 <= int(planning_text) <= 30:
+            planning_days = int(planning_text)
+        else:
+            messages.warning(request, 'Planning days must be a whole number from 1 to 30. Using 5 days.')
+
+    recommendations = build_recommendations(lookback_days, planning_days)
+
+    return render(request, 'restock/restock.html', {
+        'rows': recommendations,
+        'lookback_days': lookback_days,
+        'planning_days': planning_days,
+        'needs_count': sum(1 for row in recommendations if row['needs_restock']),
+        'total_to_order': sum(row['restock'] for row in recommendations),
+        'restock_form': RestockForm(),
     })
