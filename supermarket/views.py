@@ -7,11 +7,11 @@ Every view has @login_required, so only logged-in users can open it.
 
 from datetime import date, datetime, time, timedelta
 
-import django
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import DatabaseError, connection
+from django.db import DatabaseError
 from django.db.models import Count, ProtectedError, Sum
+from django.db.models.functions import TruncDate
 from django.shortcuts import redirect, render
 
 from .billing_logic import BillingError, create_sale, parse_cart
@@ -21,7 +21,7 @@ from .restock import build_recommendations
 from .models import Category, Customer, Product, Sale, SaleItem, Supplier
 
 # ---------------------------------------------------------------
-# Dashboard (temporary until Phase 12)
+# Dashboard
 # ---------------------------------------------------------------
 @login_required
 def dashboard(request):
@@ -69,14 +69,21 @@ def dashboard(request):
             row['percent'] = int(row['units'] * 100 / biggest_units) if biggest_units else 0
 
     # ---------- Sales trend: last 7 days ----------
+    # One query: total per day for the last 7 days (SQL: GROUP BY DATE(date))
+    first_day = today - timedelta(days=6)
+    daily_totals = {
+        row['day']: row['total']
+        for row in Sale.objects.filter(date__gte=datetime.combine(first_day, time.min))
+        .annotate(day=TruncDate('date'))
+        .values('day')
+        .annotate(total=Sum('total_amount'))
+        .order_by()
+    }
+
     trend = []
     for days_ago in range(6, -1, -1):                      # 6 days ago ... today
         day = today - timedelta(days=days_ago)
-        day_start = datetime.combine(day, time.min)
-        total = Sale.objects.filter(
-            date__gte=day_start, date__lt=day_start + timedelta(days=1)
-        ).aggregate(total=Sum('total_amount'))['total'] or 0
-        trend.append({'label': day.strftime('%a'), 'date': day, 'total': total})
+        trend.append({'label': day.strftime('%a'), 'date': day, 'total': daily_totals.get(day, 0)})
 
     highest_day = max(item['total'] for item in trend)
     for item in trend:

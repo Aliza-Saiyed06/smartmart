@@ -136,8 +136,11 @@ class Product(models.Model):
         """Increase stock when new goods arrive from the supplier."""
         if units <= 0:
             raise ValueError('Quantity must be at least 1.')
-        self.quantity += units
-        self.save(update_fields=['quantity'])
+        # F('quantity') + units is calculated INSIDE MySQL in one statement:
+        #   UPDATE product SET quantity = quantity + 50 WHERE id = 3
+        # so two restocks at the same moment can never overwrite each other.
+        Product.objects.filter(pk=self.pk).update(quantity=models.F('quantity') + units)
+        self.refresh_from_db(fields=['quantity'])
 
 
 # ---------------------------------------------------------------

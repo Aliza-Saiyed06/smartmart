@@ -116,7 +116,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (firstInvalid) {
                     firstInvalid.focus();
                 }
+                return;
             }
+            // The form is valid and is being sent: disable the Save button
+            // so a double-click cannot create the same record twice.
+            form.querySelectorAll('button[type="submit"]').forEach(function (button) {
+                button.disabled = true;
+            });
         });
 
         form.querySelectorAll('input, select, textarea').forEach(function (field) {
@@ -131,5 +137,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
         });
+    });
+
+    // If the user comes back with the Back button, the buttons must work again
+    window.addEventListener('pageshow', function (event) {
+        if (event.persisted) {
+            document.querySelectorAll('form.js-validate button[type="submit"]').forEach(function (button) {
+                button.disabled = false;
+            });
+        }
     });
 });
